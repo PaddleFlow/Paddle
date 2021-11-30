@@ -84,6 +84,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
 
     auto *chunk = &(*chunks_.rbegin());
     realloc_size = chunk->allocation_->size();
+
     uint8_t *p = reinterpret_cast<uint8_t *>(chunk->allocation_->ptr());
     auto &blocks = chunk->blocks_;
 

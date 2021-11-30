@@ -36,9 +36,13 @@ static AllocatorStrategy GetStrategyFromFlag() {
     return AllocatorStrategy::kThreadLocal;
   }
 
+  if (FLAGS_allocator_strategy == "mixed_mem_opt") {
+    return AllocatorStrategy::kMixedMemOpt;
+  }
+
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Unsupported allocator strategy: %s, condicates are naive_best_fit, "
-      "auto_growth or thread_local.",
+      "auto_growth, thread_local or mixed_mem_opt",
       FLAGS_allocator_strategy));
 }
 
