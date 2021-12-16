@@ -24,9 +24,12 @@
 #endif
 
 #include <string>
+
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+
+DECLARE_bool(use_pinned_memory_after_gpu);
 
 namespace paddle {
 namespace memory {

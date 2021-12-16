@@ -12,24 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-enum class AllocatorStrategy {
-  kNaiveBestFit,
-  kAutoGrowth,
-  kThreadLocal,
-  kMixedMemOpt
-};
-
-extern AllocatorStrategy GetAllocatorStrategy();
-
-// Do nothing, just make sure linker do not prune this file.
-extern void UseAllocatorStrategyGFlag();
-
+// TODO
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
