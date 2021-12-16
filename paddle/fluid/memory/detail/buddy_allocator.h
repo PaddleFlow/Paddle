@@ -22,6 +22,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -48,6 +49,26 @@ class BuddyAllocator {
   size_t Used();
   size_t GetMinChunkSize();
   size_t GetMaxChunkSize();
+  size_t TotalAllocated() {
+    // TODO use wr lock
+    std::lock_guard<std::mutex> lock(mutex_);
+    VLOG(10) << "used " << total_used_ << ", free " << total_free_;
+    return total_used_ + total_free_;
+  };
+  size_t Unused() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return total_free_;
+  }
+  bool ReachLimit() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (limit_ == 0) return false;
+    return (total_used_ + total_free_) >= limit_;
+  }
+  bool ResizeLimit(size_t limit) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    limit_ = limit;
+    return true;
+  }
 
  public:
   // Disable copy and assignment
@@ -81,6 +102,7 @@ class BuddyAllocator {
   PoolSet::iterator FindExistChunk(size_t size);
 
  private:
+  size_t limit_ = 0;       // 0 unlimited
   size_t total_used_ = 0;  // the total size of used memory
   size_t total_free_ = 0;  // the total size of free memory
 

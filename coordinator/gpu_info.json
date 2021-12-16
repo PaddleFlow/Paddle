@@ -1,0 +1,12 @@
+{
+  "gpuConfigInfo": {
+    "task_1": {
+      "device_id": 0,
+      "maxDeviceMemMb": 1024
+    },
+    "task_2": {
+      "device_id": 0,
+      "maxDeviceMemMb": 2048
+    }
+  }
+}

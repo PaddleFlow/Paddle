@@ -1,5 +1,6 @@
 add_subdirectory(detail)
 add_subdirectory(allocation)
+add_subdirectory(management)
 
 if (WITH_MKLDNN)
     set(MKLDNN_CTX_DEPS mkldnn)

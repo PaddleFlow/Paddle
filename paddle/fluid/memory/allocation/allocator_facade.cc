@@ -204,11 +204,10 @@ class AllocatorFacadePrivate {
   }
 
   void InitMixedMemOptAllocator(int i, platform::CUDAPlace p) {
-    auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
-    auto cuda_fit_allocator = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize());
-    allocators_[p] =
-        std::make_shared<MixedMemBestFitAllocator>(i, cuda_fit_allocator);
+    // auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    // auto cuda_fit_allocator = std::make_shared<AutoGrowthBestFitAllocator>(
+    //     cuda_allocator, platform::GpuMinChunkSize());
+    allocators_[p] = std::make_shared<MixedMemBestFitAllocator>(i, p);
   }
 #endif
 

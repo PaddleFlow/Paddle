@@ -687,3 +687,13 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+/**
+ * resource related FLAG
+ * Name: task_name
+ * Since Version: 2.2.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be enabled.
+ */
+PADDLE_DEFINE_EXPORTED_string(task_name, "", "task name");

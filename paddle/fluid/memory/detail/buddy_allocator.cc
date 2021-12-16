@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include <algorithm>
+#include "paddle/fluid/memory/detail/buddy_allocator.h"
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(reallocate_gpu_memory_in_mb);

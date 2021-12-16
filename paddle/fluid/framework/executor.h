@@ -26,10 +26,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/memory/management/gpu_resource_management.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
+
+using GPUResourceManagement = paddle::memory::management::GPUResourceManagement;
 
 class Dataset;
 class ProgramDesc;
@@ -142,6 +145,7 @@ class Executor {
 
  private:
   const platform::Place place_;
+  std::unique_ptr<GPUResourceManagement> gpu_resource_management_;
 };
 
 }  // namespace framework

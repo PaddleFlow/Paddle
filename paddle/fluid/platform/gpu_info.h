@@ -143,6 +143,9 @@ bool IsCudaMallocRecorded(int dev_id);
 //! Empty idle cached memory held by the allocator.
 void EmptyCache(void);
 
+//! Resize GPU memory limit.
+bool RecordedLimitResize(int dev_id, uint64_t limit);
+
 }  // namespace platform
 }  // namespace paddle
 
