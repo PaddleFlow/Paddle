@@ -34,12 +34,12 @@ size_t CUDAAllocatorAdjustor::AdjustMemoryLimit(
   VLOG(0) << "try to adjust device_id " << device_id << " to "
           << new_memory_limit << ", current allocated "
           << allocator->TotalAllocated();
-  size_t new_limit = 0;
+  size_t new_limit = new_memory_limit;
   if (new_memory_limit >= allocator->TotalAllocated()) {
     // bool ok =
     // paddle::platform::RecordedLimitResize(device_id, new_memory_limit);
     bool ok = allocator->ResizeLimit(new_memory_limit);
-    VLOG(0) << "RecordedLimitResize: " << ok;
+    VLOG(2) << "RecordedLimitResize: " << ok;
     if (ok) {
       new_limit = new_memory_limit;
     } else {
@@ -51,15 +51,15 @@ size_t CUDAAllocatorAdjustor::AdjustMemoryLimit(
     size_t free_res = FreeEmptyMemory(allocator, device_id, new_memory_limit);
     VLOG(2) << "after free, alloc size " << free_res;
     if (free_res <= new_memory_limit) {
-      VLOG(1) << "successful";
+      VLOG(2) << "successful";
       new_limit = new_memory_limit;
     } else {
-      VLOG(1) << "failed";
+      VLOG(2) << "failed";
       new_limit = free_res;
     }
     // bool ok = paddle::platform::RecordedLimitResize(device_id, new_limit);
-    bool ok = allocator->ResizeLimit(new_memory_limit);
-    VLOG(0) << "RecordedLimitResize: " << ok;
+    bool ok = allocator->ResizeLimit(free_res);
+    VLOG(2) << "RecordedLimitResize: " << ok;
   }
 
   return new_limit;
