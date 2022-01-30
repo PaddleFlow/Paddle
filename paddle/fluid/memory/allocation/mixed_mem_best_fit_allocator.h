@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <unordered_set>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
@@ -26,6 +27,12 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+struct MappedAddr {
+  void* host_ptr_;
+  size_t index_;
+  size_t size_;
+};
 
 // MixedMemBestFitAllocator combines GPU memory and host pinned memory.
 class MixedMemBestFitAllocator : public Allocator {
@@ -38,10 +45,12 @@ class MixedMemBestFitAllocator : public Allocator {
             new detail::GPUAllocator(device_id)),
         platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
-    host_allocator_ = std::make_shared<detail::BuddyAllocator>(
-        std::unique_ptr<detail::SystemAllocator>(
-            new detail::CUDAPinnedAllocator()),
-        platform::CUDAPinnedMinChunkSize(), platform::CUDAPinnedMaxChunkSize());
+    // host_allocator_ = std::make_shared<detail::BuddyAllocator>(
+    //     std::unique_ptr<detail::SystemAllocator>(
+    //         new detail::CUDAPinnedAllocator()),
+    //     platform::CUDAPinnedMinChunkSize(),
+    //     platform::CUDAPinnedMaxChunkSize());
+    host_allocator_ = std::make_shared<detail::CUDAPinnedAllocator>();
     VLOG(2) << "MixedMemBestFitAllocator created, device_id: " << device_id;
   }
 
@@ -54,23 +63,20 @@ class MixedMemBestFitAllocator : public Allocator {
     return device_allocator_;
   }
 
-  std::shared_ptr<detail::BuddyAllocator> GetHostAllocator() {
-    VLOG(10) << "GetHostAllocator";
-    return host_allocator_;
-  }
-
  protected:
   Allocation* AllocateImpl(size_t size) override;
   void FreeImpl(Allocation* allocation) override;
   uint64_t ReleaseImpl(const platform::Place& place) override;
 
  private:
-  // std::mutex mutex_;
   int device_id_;
 
   platform::CUDAPlace device_place_;
   std::shared_ptr<detail::BuddyAllocator> device_allocator_;
-  std::shared_ptr<detail::BuddyAllocator> host_allocator_;
+  // std::shared_ptr<detail::BuddyAllocator> host_allocator_;
+  std::shared_ptr<detail::SystemAllocator> host_allocator_;
+
+  std::unordered_map<void*, MappedAddr> devptr2hostptr_;
 };
 
 }  // namespace allocation

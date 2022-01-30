@@ -190,8 +190,8 @@ void FileListener::StopMonitorThread() {
 void FileListener::RegisterFileListener(const std::string& file_path,
                                         const std::string& handler_name,
                                         callback callback_func) {
-  LOG(INFO) << "Register a file listener named " << handler_name << " on file "
-            << file_path;
+  VLOG(1) << "Register a file listener named " << handler_name << " on file "
+          << file_path;
   FileInfo new_file(file_path);
   std::vector<CallbackFunc> new_handlers;
   InfoAndHandlers value = {new_file, new_handlers};

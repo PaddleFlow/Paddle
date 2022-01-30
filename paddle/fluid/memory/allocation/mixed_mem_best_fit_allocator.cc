@@ -58,17 +58,22 @@ Allocation* MixedMemBestFitAllocator::AllocateImpl(size_t size) {
     VLOG(2) << "device memory reached limit, try to allocate from host pinned "
                "memory";
     try {
-      void* ptr = host_allocator_->Alloc(size);
-      PADDLE_ENFORCE_NOT_NULL(
-          ptr, platform::errors::ResourceExhausted("cudaHostAlloc failed"));
-      // if (FLAGS_init_allocated_mem) {
-      //   memset(ptr, 0xEF, size);
-      // }
+      size_t index = 0;
+      void* host_ptr = host_allocator_->Alloc(&index, size);
+      PADDLE_ENFORCE_NOT_NULL(host_ptr, platform::errors::ResourceExhausted(
+                                            "cudaHostAlloc failed"));
 
-      Allocation* tmp_alloc =
-          new Allocation(ptr, size, platform::CUDAPinnedPlace());
-      platform::MemEvenRecorder::Instance().PushMemRecord(
-          static_cast<void*>(tmp_alloc), platform::CUDAPinnedPlace(), size);
+      void* dev_ptr;
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaHostGetDevicePointer(&dev_ptr, host_ptr, 0));
+      PADDLE_ENFORCE_NOT_NULL(dev_ptr, platform::errors::ResourceExhausted(
+                                           "cudaHostGetDevicePointer failed"));
+      VLOG(10) << "system allocator converted host_ptr " << host_ptr
+               << " to dev_ptr: " << dev_ptr << ", index: " << index
+               << ", size: " << size;
+
+      devptr2hostptr_.insert({dev_ptr, {host_ptr, index, size}});
+      Allocation* tmp_alloc = new Allocation(dev_ptr, size, device_place_);
       return tmp_alloc;
     } catch (...) {
       VLOG(1) << "Still allocation failed using host memory";
@@ -80,24 +85,29 @@ Allocation* MixedMemBestFitAllocator::AllocateImpl(size_t size) {
 }
 
 void MixedMemBestFitAllocator::FreeImpl(Allocation* allocation) {
-  const auto place = allocation->place();
+  auto place = allocation->place();
+  bool succ = false;
+
+  auto it = devptr2hostptr_.find(allocation->ptr());
+  if (it == devptr2hostptr_.end()) {
+    device_allocator_->Free(allocation->ptr());
+    succ = true;
+    platform::MemEvenRecorder::Instance().PopMemRecord(
+        static_cast<void*>(allocation), place);
+  } else {
+    host_allocator_->Free(it->second.host_ptr_, it->second.size_,
+                          it->second.index_);
+    devptr2hostptr_.erase(it);
+    succ = true;
+  }
+
   VLOG(9) << "FreeImpl called, place: " << place
           << ", addr: " << allocation->ptr()
           << ", size: " << allocation->size();
 
-  bool succ = false;
-
-  if (platform::is_gpu_place(place)) {
-    device_allocator_->Free(allocation->ptr());
-    succ = true;
-  } else if (platform::is_cuda_pinned_place(place)) {
-    host_allocator_->Free(allocation->ptr());
-    succ = true;
-  }
-
   if (succ) {
-    platform::MemEvenRecorder::Instance().PopMemRecord(
-        static_cast<void*>(allocation), place);
+    // platform::MemEvenRecorder::Instance().PopMemRecord(
+    //     static_cast<void*>(allocation), place);
     delete allocation;
   }
   return;
@@ -109,7 +119,7 @@ uint64_t MixedMemBestFitAllocator::ReleaseImpl(const platform::Place& place) {
   if (platform::is_gpu_place(place)) {
     ret = device_allocator_->Release();
   } else if (platform::is_cuda_pinned_place(place)) {
-    ret = host_allocator_->Release();
+    // ignore
   }
   return ret;
 }

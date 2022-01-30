@@ -82,6 +82,9 @@ class ParallelExecutorPrivate {
 #endif
       });
     }
+#if defined(PADDLE_WITH_CUDA)
+    gpu_resource_management_ = std::make_unique<GPUResourceManagement>();
+#endif
   }
 
   ~ParallelExecutorPrivate() {
@@ -394,6 +397,8 @@ class ParallelExecutorPrivate {
   ir::GarbageCollectorMap gcs_;
 
   details::ParallelSSAGraphExecutor *inference_executor_{nullptr};
+
+  std::unique_ptr<GPUResourceManagement> gpu_resource_management_;
 };
 
 bool ParallelExecutorPrivate::IsUseCUDA(DeviceType use_device) {
@@ -542,6 +547,10 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
             << "FLAGS_eager_delete_tensor_gb = "
             << FLAGS_eager_delete_tensor_gb;
   }
+#if defined(PADDLE_WITH_CUDA)
+  VLOG(1) << "GPU resource management run";
+  gpu_resource_management_->Run();
+#endif
   return graph;
 }
 
