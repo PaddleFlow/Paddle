@@ -515,6 +515,9 @@ PADDLE_DEFINE_EXPORTED_uint64(
     "memory exceeds the limit even though there is available "
     "memory on the gpu card. The unit is MB and default value is 0.");
 
+PADDLE_DEFINE_EXPORTED_uint64(initial_mix_gpu_mem_limit_in_mb, 1024UL,
+                              "default gpu memory limit in mixed allocator");
+
 #endif
 
 /**

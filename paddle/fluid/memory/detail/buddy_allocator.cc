@@ -19,6 +19,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
+DECLARE_uint64(initial_mix_gpu_mem_limit_in_mb);
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -35,7 +36,11 @@ BuddyAllocator::BuddyAllocator(
       max_chunk_size_(max_chunk_size),
       extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+      system_allocator_(std::move(system_allocator)) {
+  if (FLAGS_initial_mix_gpu_mem_limit_in_mb != 0) {
+    limit_ = FLAGS_initial_mix_gpu_mem_limit_in_mb << 20;
+  }
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
