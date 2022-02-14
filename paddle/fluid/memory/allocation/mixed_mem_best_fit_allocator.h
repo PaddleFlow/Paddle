@@ -30,7 +30,6 @@ namespace allocation {
 
 struct MappedAddr {
   void* host_ptr_;
-  size_t index_;
   size_t size_;
 };
 
@@ -45,13 +44,13 @@ class MixedMemBestFitAllocator : public Allocator {
             new detail::GPUAllocator(device_id)),
         platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
-    // host_allocator_ = std::make_shared<detail::BuddyAllocator>(
-    //     std::unique_ptr<detail::SystemAllocator>(
-    //         new detail::CUDAPinnedAllocator()),
-    //     platform::CUDAPinnedMinChunkSize(),
-    //     platform::CUDAPinnedMaxChunkSize());
-    host_allocator_ = std::make_shared<detail::CUDAPinnedAllocator>();
-    VLOG(2) << "MixedMemBestFitAllocator created, device_id: " << device_id;
+    host_allocator_ = std::make_shared<detail::BuddyAllocator>(
+        std::unique_ptr<detail::SystemAllocator>(
+            new detail::CUDAPinnedAllocator()),
+        platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+    VLOG(2) << "MixedMemBestFitAllocator created, device_id: " << device_id
+            << ", min_chunk_size: " << platform::GpuMinChunkSize()
+            << ", max_chunk_size: " << platform::GpuMaxChunkSize();
   }
 
   virtual ~MixedMemBestFitAllocator() {}
@@ -73,8 +72,7 @@ class MixedMemBestFitAllocator : public Allocator {
 
   platform::CUDAPlace device_place_;
   std::shared_ptr<detail::BuddyAllocator> device_allocator_;
-  // std::shared_ptr<detail::BuddyAllocator> host_allocator_;
-  std::shared_ptr<detail::SystemAllocator> host_allocator_;
+  std::shared_ptr<detail::BuddyAllocator> host_allocator_;
 
   std::unordered_map<void*, MappedAddr> devptr2hostptr_;
 };

@@ -58,8 +58,7 @@ Allocation* MixedMemBestFitAllocator::AllocateImpl(size_t size) {
     VLOG(2) << "device memory reached limit, try to allocate from host pinned "
                "memory";
     try {
-      size_t index = 0;
-      void* host_ptr = host_allocator_->Alloc(&index, size);
+      void* host_ptr = host_allocator_->Alloc(size);
       PADDLE_ENFORCE_NOT_NULL(host_ptr, platform::errors::ResourceExhausted(
                                             "cudaHostAlloc failed"));
 
@@ -69,10 +68,9 @@ Allocation* MixedMemBestFitAllocator::AllocateImpl(size_t size) {
       PADDLE_ENFORCE_NOT_NULL(dev_ptr, platform::errors::ResourceExhausted(
                                            "cudaHostGetDevicePointer failed"));
       VLOG(10) << "system allocator converted host_ptr " << host_ptr
-               << " to dev_ptr: " << dev_ptr << ", index: " << index
-               << ", size: " << size;
+               << " to dev_ptr: " << dev_ptr << ", size: " << size;
 
-      devptr2hostptr_.insert({dev_ptr, {host_ptr, index, size}});
+      devptr2hostptr_.insert({dev_ptr, {host_ptr, size}});
       Allocation* tmp_alloc = new Allocation(dev_ptr, size, device_place_);
       return tmp_alloc;
     } catch (...) {
@@ -95,8 +93,7 @@ void MixedMemBestFitAllocator::FreeImpl(Allocation* allocation) {
     platform::MemEvenRecorder::Instance().PopMemRecord(
         static_cast<void*>(allocation), place);
   } else {
-    host_allocator_->Free(it->second.host_ptr_, it->second.size_,
-                          it->second.index_);
+    host_allocator_->Free(it->second.host_ptr_);
     devptr2hostptr_.erase(it);
     succ = true;
   }
@@ -117,9 +114,9 @@ uint64_t MixedMemBestFitAllocator::ReleaseImpl(const platform::Place& place) {
   VLOG(9) << "ReleaseImpl called, place: " << place;
   uint64_t ret = 0;
   if (platform::is_gpu_place(place)) {
-    ret = device_allocator_->Release();
+    ret = device_allocator_->Release() || host_allocator_->Release();
   } else if (platform::is_cuda_pinned_place(place)) {
-    // ignore
+    // ret = host_allocator_->Release();
   }
   return ret;
 }
