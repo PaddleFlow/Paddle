@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
+
 #include <cstdlib>
 #include <mutex>
 #include <vector>
@@ -509,9 +510,9 @@ class RecordedCudaMallocHelper {
  private:
   explicit RecordedCudaMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
-    if (NeedRecord()) {
-      mtx_.reset(new std::mutex());
-    }
+    // if (NeedRecord()) {
+    mtx_.reset(new std::mutex());
+    // }
   }
 
   DISABLE_COPY_AND_ASSIGN(RecordedCudaMallocHelper);
@@ -639,9 +640,21 @@ class RecordedCudaMallocHelper {
 
   uint64_t LimitSize() const { return limit_size_; }
 
+  // bool ResizeLimit(uint64_t limit_size) {
+  //   std::lock_guard<std::mutex> guard(*mtx_);
+  //   VLOG(2) << "current limit " << limit_size_ << ", new limit " <<
+  //   limit_size;
+  //   if (limit_size < limit_size_) {
+  //     // TODO Not supported yet
+  //     return false;
+  //   }
+  //   limit_size_ = limit_size;
+  //   return true;
+  // }
+
  private:
   const int dev_id_;
-  const uint64_t limit_size_;
+  uint64_t limit_size_;
   std::atomic<uint64_t> cur_size_{0};
 
   mutable std::unique_ptr<std::mutex> mtx_;
@@ -682,6 +695,14 @@ void EmptyCache(void) {
     memory::Release(CUDAPlace(device));
   }
 }
+
+// bool RecordedLimitResize(int dev_id, uint64_t limit) {
+//   auto instance = RecordedCudaMallocHelper::Instance(dev_id);
+//   PADDLE_ENFORCE_NOT_NULL(
+//       instance, platform::errors::NotFound(
+//                     "recorded instance not found for device %s", dev_id));
+//   return instance->ResizeLimit(limit);
+// }
 
 }  // namespace platform
 }  // namespace paddle

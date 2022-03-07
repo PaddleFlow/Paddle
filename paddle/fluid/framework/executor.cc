@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
@@ -66,7 +68,11 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place) : place_(place) {
+#if defined(PADDLE_WITH_CUDA)
+  gpu_resource_management_ = std::make_unique<GPUResourceManagement>();
+#endif
+}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
@@ -524,6 +530,9 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
     callback();
   }
+#if defined(PADDLE_WITH_CUDA)
+  gpu_resource_management_->Run();
+#endif
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,

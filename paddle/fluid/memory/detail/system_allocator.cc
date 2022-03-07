@@ -194,7 +194,9 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 #ifdef PADDLE_WITH_HIP
   hipError_t result = hipHostMalloc(&p, size, hipHostMallocPortable);
 #else
-  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+  // cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+  cudaError_t result =
+      cudaHostAlloc(&p, size, cudaHostAllocWriteCombined | cudaHostAllocMapped);
 #endif
 
   if (result == gpuSuccess) {
@@ -246,7 +248,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 #endif
 }
 
-bool CUDAPinnedAllocator::UseGpu() const { return false; }
+bool CUDAPinnedAllocator::UseGpu() const { return true; }
 
 #endif
 

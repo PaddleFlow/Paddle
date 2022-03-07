@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include <algorithm>
+#include "paddle/fluid/memory/detail/buddy_allocator.h"
 
 #include "gflags/gflags.h"
-#include "glog/logging.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
+DECLARE_uint64(initial_mix_gpu_mem_limit_in_mb);
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -36,7 +36,11 @@ BuddyAllocator::BuddyAllocator(
       max_chunk_size_(max_chunk_size),
       extra_padding_size_(extra_padding_size),
       cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+      system_allocator_(std::move(system_allocator)) {
+  if (FLAGS_initial_mix_gpu_mem_limit_in_mb != 0) {
+    limit_ = FLAGS_initial_mix_gpu_mem_limit_in_mb << 20;
+  }
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
@@ -104,11 +108,11 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 }
 
 void BuddyAllocator::Free(void* p) {
-  // Point back to metadata
-  auto block = static_cast<MemoryBlock*>(p)->Metadata();
-
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
+
+  // Point back to metadata
+  auto block = static_cast<MemoryBlock*>(p)->Metadata();
 
   VLOG(10) << "Free from address " << block;
 
@@ -131,10 +135,13 @@ void BuddyAllocator::Free(void* p) {
   // Trying to merge the right buddy
   MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
   if (right_buddy) {
-    VLOG(10) << "Merging this block " << block << " with its right buddy "
-             << right_buddy;
-
     auto rb_desc = cache_.LoadDesc(right_buddy);
+
+    VLOG(10) << "Merging this block " << block << " with its right buddy "
+             << right_buddy << ", index: " << rb_desc->get_index()
+             << ", size: " << rb_desc->get_total_size()
+             << ", type: " << rb_desc->get_type();
+
     if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
       pool_.erase(IndexSizeAddress(rb_desc->get_index(),
@@ -148,11 +155,14 @@ void BuddyAllocator::Free(void* p) {
   // Trying to merge the left buddy
   MemoryBlock* left_buddy = block->GetLeftBuddy(&cache_);
   if (left_buddy) {
+    auto* lb_desc = cache_.LoadDesc(left_buddy);
+
     VLOG(10) << "Merging this block " << block << " with its left buddy "
-             << left_buddy;
+             << left_buddy << ", index: " << lb_desc->get_index()
+             << ", size: " << lb_desc->get_total_size()
+             << ", type: " << lb_desc->get_type();
 
     // auto left_buddy = block->left_buddy(cache_);
-    auto* lb_desc = cache_.LoadDesc(left_buddy);
     if (lb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
       pool_.erase(IndexSizeAddress(lb_desc->get_index(),
@@ -298,6 +308,9 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
       index = std::get<0>(*it);
       continue;
     }
+    VLOG(10) << "Found Chunk: " << std::get<2>(*it)
+             << ", index: " << std::get<0>(*it)
+             << ", size: " << std::get<1>(*it);
     return it;
   }
 }

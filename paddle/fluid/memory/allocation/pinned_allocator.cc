@@ -31,7 +31,11 @@ Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_CUDA_SUCCESS(hipHostMalloc(&ptr, size, hipHostMallocPortable));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
+  // PADDLE_ENFORCE_CUDA_SUCCESS(cudaHostAlloc(&ptr, size,
+  // cudaHostAllocPortable));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaHostAlloc(
+      &ptr, size, cudaHostAllocWriteCombined | cudaHostAllocMapped));
+  VLOG(10) << "cuda allocated address " << ptr;
 #endif
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
 }

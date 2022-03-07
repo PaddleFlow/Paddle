@@ -515,6 +515,9 @@ PADDLE_DEFINE_EXPORTED_uint64(
     "memory exceeds the limit even though there is available "
     "memory on the gpu card. The unit is MB and default value is 0.");
 
+PADDLE_DEFINE_EXPORTED_uint64(initial_mix_gpu_mem_limit_in_mb, 1024UL,
+                              "default gpu memory limit in mixed allocator");
+
 #endif
 
 /**
@@ -687,3 +690,13 @@ DEFINE_bool(enable_slotrecord_reset_shrink, false,
             "enable slotrecord obejct reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file, false,
             "enable parser ins file , default false");
+
+/**
+ * resource related FLAG
+ * Name: task_name
+ * Since Version: 2.2.0
+ * Value Range: string, default=empty
+ * Example:
+ * Note: Holds list of operation types with OneDNN kernels to be enabled.
+ */
+PADDLE_DEFINE_EXPORTED_string(task_name, "", "task name");

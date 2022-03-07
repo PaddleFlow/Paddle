@@ -1,0 +1,3 @@
+cc_library(file_listener SRCS file_listener.cc DEPS glog crypto)
+cc_library(gpu_usage_adjustment SRCS gpu_usage_adjustment.cc DEPS glog buddy_allocator gpu_info allocator_facade mixed_mem_best_fit_allocator)
+cc_library(gpu_resource_management SRCS gpu_resource_management.cc DEPS glog jsoncpp file_listener gpu_usage_adjustment)
