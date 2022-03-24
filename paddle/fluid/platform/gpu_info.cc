@@ -510,9 +510,9 @@ class RecordedCudaMallocHelper {
  private:
   explicit RecordedCudaMallocHelper(int dev_id, uint64_t limit_size = 0)
       : dev_id_(dev_id), limit_size_(limit_size) {
-    // if (NeedRecord()) {
-    mtx_.reset(new std::mutex());
-    // }
+    if (NeedRecord()) {
+      mtx_.reset(new std::mutex());
+    }
   }
 
   DISABLE_COPY_AND_ASSIGN(RecordedCudaMallocHelper);
