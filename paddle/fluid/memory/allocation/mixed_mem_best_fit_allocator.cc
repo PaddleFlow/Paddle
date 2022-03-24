@@ -41,6 +41,7 @@ Allocation* MixedMemBestFitAllocator::AllocateImpl(size_t size) {
       platform::errors::InvalidArgument("Underlying host allocator of "
                                         "MixedMemBestFitAllocator is nullptr"));
 
+  std::lock_guard<std::mutex> lock(mtx_);
   if (!device_allocator_->ReachLimit()) {
     try {
       void* ptr = device_allocator_->Alloc(size);
@@ -83,9 +84,10 @@ Allocation* MixedMemBestFitAllocator::AllocateImpl(size_t size) {
 }
 
 void MixedMemBestFitAllocator::FreeImpl(Allocation* allocation) {
-  auto place = allocation->place();
+  const auto place = allocation->place();
   bool succ = false;
 
+  std::lock_guard<std::mutex> lock(mtx_);
   auto it = devptr2hostptr_.find(allocation->ptr());
   if (it == devptr2hostptr_.end()) {
     device_allocator_->Free(allocation->ptr());

@@ -74,6 +74,7 @@ class MixedMemBestFitAllocator : public Allocator {
   std::shared_ptr<detail::BuddyAllocator> device_allocator_;
   std::shared_ptr<detail::BuddyAllocator> host_allocator_;
 
+  std::mutex mtx_;
   std::unordered_map<void*, MappedAddr> devptr2hostptr_;
 };
 
