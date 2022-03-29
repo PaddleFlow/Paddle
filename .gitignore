@@ -32,3 +32,7 @@ build_*
 cmake-build-*
 paddle/fluid/operators/distributed/send_recv.proto
 model_test
+
+tmp/
+log/
+__pycache__
