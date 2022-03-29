@@ -1,0 +1,17 @@
+{
+    "gpuConfigInfo": {
+        "gpu-mix-job-1-default-nginx-0": {
+            "device_id": 0,
+            "host_device_id": 2,
+            "maxDeviceMemMb": 2000,
+            "priority": 1
+        },
+        "gpu-mix-job-2-default-nginx-0": {
+            "device_id": 0,
+            "host_device_id": 7,
+            "maxDeviceMemMb": 2000,
+            "priority": 1
+        }
+    },
+    "version": 1648534885397
+}
