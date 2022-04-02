@@ -30,7 +30,6 @@ class LocalCoordinator(threading.Thread):
         self.resource_manager_ = ResourceManager()
         self.gpu_mem_mb_per_cgpu_share_ = 100  # default 100M per cgpu share
         self.gpu_conf_file = section['gpu_config_file']
-        self.target_file_ = open(self.gpu_conf_file, 'w')
         self.job_viwe_version_ = 0
         self.run_flag_ = True
         self.mutex_ = threading.Lock()
@@ -40,7 +39,6 @@ class LocalCoordinator(threading.Thread):
 
     def __del__(self):
         logging.info('clean up now')
-        self.target_file_.close()
         del self.resource_manager_
 
     def __get_self_node(self) -> string:
@@ -49,10 +47,15 @@ class LocalCoordinator(threading.Thread):
     def __filter_job(self, pod) -> bool:
         if pod.spec.node_name != self.hostname_:
             return False
+        VALID_STATUS = ['ContainerCreating', 'Running']
+        if pod.status.phase not in VALID_STATUS:
+            return False
         annotations = pod.metadata.annotations
         if annotations == None:
             return False
         if 'BAIDU_COM_GPU_IDX' not in annotations.keys():
+            return False
+        if 'antman/job-name' not in annotations.keys():
             return False
         containers = pod.spec.containers
         if len(containers) != 1:
@@ -60,16 +63,15 @@ class LocalCoordinator(threading.Thread):
                 'pod {} has {} containers, only support 1 container now'.format(
                     pod.metadata.name, len(containers)))
             return False
-        # TODO check antman job
         return True
 
     def __parse_job(self, pod) -> Job:
-        # TODO 需要完善
-        name = pod.metadata.name
+        PRIO_KEY = 'antman/priority'
         annotations = pod.metadata.annotations
+        name = annotations['antman/job-name']
         priority = 1  # default low priority
-        if 'priority' in annotations.keys():
-            priority = annotations['priority']
+        if PRIO_KEY in annotations.keys():
+            priority = annotations[PRIO_KEY]
         device_id = int(annotations['BAIDU_COM_GPU_IDX'])
         container = pod.spec.containers[0]
         required_gpu_mem = 100  # default 100M
@@ -114,8 +116,10 @@ class LocalCoordinator(threading.Thread):
     def __dump_decision(self, view):
         content = json.dumps(view, indent=4, sort_keys=True)
         logging.info('dump decision: {}'.format(content))
-        self.target_file_.write(content)
-        self.target_file_.flush()
+        with open(self.gpu_conf_file, 'w') as f:
+            f.write(content)
+            f.truncate()
+            f.close()
 
     def stop(self):
         logging.info('ready to exit now')

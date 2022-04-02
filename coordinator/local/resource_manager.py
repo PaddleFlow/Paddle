@@ -51,6 +51,10 @@ class ResourceManager:
         for j in self.jobs_.keys():
             if j not in new_jobs.keys():
                 changed = True
+            elif self.jobs_[j].device_ != new_jobs[j].device_:
+                changed = True
+            elif self.jobs_[j].required_gpu_ != new_jobs[j].required_gpu_:
+                changed = True
         if changed == False:
             return self.version_
         self.gpu_topo_ = gpus
