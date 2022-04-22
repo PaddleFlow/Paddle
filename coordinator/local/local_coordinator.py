@@ -15,7 +15,7 @@ import signal
 from kubernetes import client as k8s_cli
 from kubernetes import config as k8s_cfg
 
-from resource_manager import ResourceManager, Job
+from resource_manager import ResourceManager, NvidiaDeviceMonitor, Job
 
 
 class LocalCoordinator(threading.Thread):
@@ -28,6 +28,7 @@ class LocalCoordinator(threading.Thread):
         threading.Thread.__init__(self)
         self.hostname_ = section['hostname']
         self.resource_manager_ = ResourceManager()
+        self.gpu_monitor_ = NvidiaDeviceMonitor()
         self.gpu_mem_mb_per_cgpu_share_ = 100  # default 100M per cgpu share
         self.gpu_conf_file = section['gpu_config_file']
         self.job_viwe_version_ = 0
@@ -40,6 +41,7 @@ class LocalCoordinator(threading.Thread):
     def __del__(self):
         logging.info('clean up now')
         del self.resource_manager_
+        del self.gpu_monitor_
 
     def __get_self_node(self) -> string:
         return socket.gethostname()
@@ -71,19 +73,20 @@ class LocalCoordinator(threading.Thread):
         name = annotations['antman/job-name']
         priority = 1  # default low priority
         if PRIO_KEY in annotations.keys():
-            priority = annotations[PRIO_KEY]
+            priority = int(annotations[PRIO_KEY])
         device_id = int(annotations['BAIDU_COM_GPU_IDX'])
         container = pod.spec.containers[0]
         required_gpu_mem = 100  # default 100M
+        creation_ts = pod.metadata.creation_timestamp
         if container.resources != None and container.resources.requests != None:
             if 'baidu.com/cgpu_memory' in container.resources.requests.keys():
                 requests = container.resources.requests
                 required_gpu_mem = int(requests['baidu.com/cgpu_memory']
                                        ) * self.gpu_mem_mb_per_cgpu_share_
         logging.info(
-            'find job {}, priority {}, device_id {}, required_gpu_men {}M'.
-            format(name, priority, device_id, required_gpu_mem))
-        return Job(name, priority, device_id, required_gpu_mem)
+            'find job {}, priority {}, device_id {}, required_gpu_men {}M, creation_ts {}'
+            .format(name, priority, device_id, required_gpu_mem, creation_ts))
+        return Job(name, priority, device_id, required_gpu_mem, creation_ts)
 
     def __get_gpu_topo(self) -> list:
         GPU_KEY = 'kubernetes.io/baidu-cgpu.gpu-topo'
@@ -133,6 +136,7 @@ class LocalCoordinator(threading.Thread):
             # 2. watch pods
             jobs = self.__get_jobs()
             # 3. 更新作业情况
+            self.gpu_monitor_.show_all_status()
             ver = self.resource_manager_.update_jobs(jobs, gpus)
             if ver == self.job_viwe_version_:
                 # unchanged
