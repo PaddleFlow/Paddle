@@ -57,7 +57,7 @@ class LocalCoordinator(threading.Thread):
             return False
         if 'BAIDU_COM_GPU_IDX' not in annotations.keys():
             return False
-        if 'antman/job-name' not in annotations.keys():
+        if 'paddle-para/job-name' not in annotations.keys():
             return False
         containers = pod.spec.containers
         if len(containers) != 1:
@@ -68,9 +68,9 @@ class LocalCoordinator(threading.Thread):
         return True
 
     def __parse_job(self, pod) -> Job:
-        PRIO_KEY = 'antman/priority'
+        PRIO_KEY = 'paddle-para/priority'
         annotations = pod.metadata.annotations
-        name = annotations['antman/job-name']
+        name = annotations['paddle-para/job-name']
         priority = 1  # default low priority
         if PRIO_KEY in annotations.keys():
             priority = int(annotations[PRIO_KEY])
@@ -130,14 +130,14 @@ class LocalCoordinator(threading.Thread):
 
     def run(self):
         while (self.run_flag_):
-            time.sleep(3)
+            time.sleep(2)
             # 1. get gpu info
             gpus = self.__get_gpu_topo()
             # 2. watch pods
             jobs = self.__get_jobs()
             # 3. 更新作业情况
-            self.gpu_monitor_.show_all_status()
             ver = self.resource_manager_.update_jobs(jobs, gpus)
+            self.gpu_monitor_.show_all_status(ver, jobs)
             if ver == self.job_viwe_version_:
                 # unchanged
                 logging.info('unchanged, ignore')

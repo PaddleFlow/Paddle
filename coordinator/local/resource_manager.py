@@ -34,12 +34,19 @@ class NvidiaDeviceMonitor:
         # ref: https://github.com/anderskm/gputil
         return GPUtil.getGPUs()
 
-    def show_all_status(self):
+    def show_all_status(self, version, jobs=[]):
         gpus = self.get_device_view()
-        for g in gpus:
-            logging.info('gpu_id: {}, mem-util: {}%, sm-util: {}%'.format(
-                g.id, format(g.memoryUtil * 100, '.4f'),
-                format(g.load * 100, '.4f')))
+        g_count = len(gpus)
+        p_count = [0] * g_count
+        for j in jobs:
+            p_count[j.device_] += 1
+        for idx in range(g_count):
+            g = gpus[idx]
+            logging.info(
+                'version: {}, gpu_id: {}, process-count: {}, mem-util: {}%, sm-util: {}%'
+                .format(version, g.id, p_count[idx],
+                        format(g.memoryUtil * 100, '.4f'),
+                        format(g.load * 100, '.4f')))
 
 
 class ResourceManager:
