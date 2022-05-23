@@ -693,10 +693,10 @@ DEFINE_bool(enable_ins_parser_file, false,
 
 /**
  * resource related FLAG
- * Name: task_name
+ * Name: job_name
  * Since Version: 2.2.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PADDLE_DEFINE_EXPORTED_string(task_name, "", "task name");
+PADDLE_DEFINE_EXPORTED_string(job_name, "", "job name");

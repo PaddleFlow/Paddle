@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/management/file_listener.h"
 #include "paddle/fluid/memory/management/gpu_usage_adjustment.h"
 
-DECLARE_string(task_name);
+DECLARE_string(job_name);
 
 namespace paddle {
 namespace memory {
@@ -112,7 +112,7 @@ class GPUResourceManagement {
   std::string gpu_resource_manage_file_path_;
   const std::string FILE_LISTENER_NAME = "GPUResourceManage";
 
-  const std::string task_name_;
+  const std::string job_name_;
 };
 
 }  // namespace management

@@ -33,7 +33,7 @@ int ReadStringFromEnvVar(const std::string& env_var_name,
   return 0;
 }
 
-GPUResourceManagement::GPUResourceManagement() : task_name_(FLAGS_task_name) {
+GPUResourceManagement::GPUResourceManagement() : job_name_(FLAGS_job_name) {
   ReadStringFromEnvVar("GPU_CONFIG_FILE", "", gpu_resource_manage_file_path_);
   if (gpu_resource_manage_file_path_.empty()) {
     enable_gpu_resource_manage_ = false;
@@ -41,8 +41,8 @@ GPUResourceManagement::GPUResourceManagement() : task_name_(FLAGS_task_name) {
     return;
   }
 
-  if (task_name_.empty()) {
-    VLOG(1) << "no task_name";
+  if (job_name_.empty()) {
+    VLOG(1) << "no job_name";
   }
 
   enable_gpu_resource_manage_ = true;
@@ -113,11 +113,11 @@ void GPUResourceManagement::ParseMemoryLimitFromJson(const Json::Value& json) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto gpu_infos = json["gpuConfigInfo"];
-  if (!gpu_infos.isMember(task_name_)) {
-    VLOG(1) << "not gpu config info provided for " << task_name_;
+  if (!gpu_infos.isMember(job_name_)) {
+    VLOG(1) << "not gpu config info provided for " << job_name_;
     return;
   }
-  auto selected_info = gpu_infos[task_name_];
+  auto selected_info = gpu_infos[job_name_];
 
   int device_id = 0;
   if (selected_info["device_id"].isNull() ||

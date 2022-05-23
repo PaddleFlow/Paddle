@@ -15,7 +15,7 @@ import signal
 from kubernetes import client as k8s_cli
 from kubernetes import config as k8s_cfg
 
-from resource_manager import ResourceManager, Job
+from resource_manager import ResourceManager, NvidiaDeviceMonitor, Job
 
 
 class LocalCoordinator(threading.Thread):
@@ -28,9 +28,9 @@ class LocalCoordinator(threading.Thread):
         threading.Thread.__init__(self)
         self.hostname_ = section['hostname']
         self.resource_manager_ = ResourceManager()
+        self.gpu_monitor_ = NvidiaDeviceMonitor()
         self.gpu_mem_mb_per_cgpu_share_ = 100  # default 100M per cgpu share
         self.gpu_conf_file = section['gpu_config_file']
-        self.target_file_ = open(self.gpu_conf_file, 'w')
         self.job_viwe_version_ = 0
         self.run_flag_ = True
         self.mutex_ = threading.Lock()
@@ -40,8 +40,8 @@ class LocalCoordinator(threading.Thread):
 
     def __del__(self):
         logging.info('clean up now')
-        self.target_file_.close()
         del self.resource_manager_
+        del self.gpu_monitor_
 
     def __get_self_node(self) -> string:
         return socket.gethostname()
@@ -49,10 +49,15 @@ class LocalCoordinator(threading.Thread):
     def __filter_job(self, pod) -> bool:
         if pod.spec.node_name != self.hostname_:
             return False
+        VALID_STATUS = ['ContainerCreating', 'Running']
+        if pod.status.phase not in VALID_STATUS:
+            return False
         annotations = pod.metadata.annotations
         if annotations == None:
             return False
         if 'BAIDU_COM_GPU_IDX' not in annotations.keys():
+            return False
+        if 'paddle-para/job-name' not in annotations.keys():
             return False
         containers = pod.spec.containers
         if len(containers) != 1:
@@ -60,28 +65,28 @@ class LocalCoordinator(threading.Thread):
                 'pod {} has {} containers, only support 1 container now'.format(
                     pod.metadata.name, len(containers)))
             return False
-        # TODO check antman job
         return True
 
     def __parse_job(self, pod) -> Job:
-        # TODO 需要完善
-        name = pod.metadata.name
+        PRIO_KEY = 'paddle-para/priority'
         annotations = pod.metadata.annotations
+        name = annotations['paddle-para/job-name']
         priority = 1  # default low priority
-        if 'priority' in annotations.keys():
-            priority = annotations['priority']
+        if PRIO_KEY in annotations.keys():
+            priority = int(annotations[PRIO_KEY])
         device_id = int(annotations['BAIDU_COM_GPU_IDX'])
         container = pod.spec.containers[0]
         required_gpu_mem = 100  # default 100M
+        creation_ts = pod.metadata.creation_timestamp
         if container.resources != None and container.resources.requests != None:
             if 'baidu.com/cgpu_memory' in container.resources.requests.keys():
                 requests = container.resources.requests
                 required_gpu_mem = int(requests['baidu.com/cgpu_memory']
                                        ) * self.gpu_mem_mb_per_cgpu_share_
         logging.info(
-            'find job {}, priority {}, device_id {}, required_gpu_men {}M'.
-            format(name, priority, device_id, required_gpu_mem))
-        return Job(name, priority, device_id, required_gpu_mem)
+            'find job {}, priority {}, device_id {}, required_gpu_men {}M, creation_ts {}'
+            .format(name, priority, device_id, required_gpu_mem, creation_ts))
+        return Job(name, priority, device_id, required_gpu_mem, creation_ts)
 
     def __get_gpu_topo(self) -> list:
         GPU_KEY = 'kubernetes.io/baidu-cgpu.gpu-topo'
@@ -114,8 +119,10 @@ class LocalCoordinator(threading.Thread):
     def __dump_decision(self, view):
         content = json.dumps(view, indent=4, sort_keys=True)
         logging.info('dump decision: {}'.format(content))
-        self.target_file_.write(content)
-        self.target_file_.flush()
+        with open(self.gpu_conf_file, 'w') as f:
+            f.write(content)
+            f.truncate()
+            f.close()
 
     def stop(self):
         logging.info('ready to exit now')
@@ -123,13 +130,14 @@ class LocalCoordinator(threading.Thread):
 
     def run(self):
         while (self.run_flag_):
-            time.sleep(3)
+            time.sleep(2)
             # 1. get gpu info
             gpus = self.__get_gpu_topo()
             # 2. watch pods
             jobs = self.__get_jobs()
             # 3. 更新作业情况
             ver = self.resource_manager_.update_jobs(jobs, gpus)
+            self.gpu_monitor_.show_all_status(ver, jobs)
             if ver == self.job_viwe_version_:
                 # unchanged
                 logging.info('unchanged, ignore')
